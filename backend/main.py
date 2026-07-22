@@ -19,7 +19,7 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:5173",
         "http://localhost:3000",
-        "https://client-intelligence-fnp38n0tg-anshu0901kumari-7232s-projects.vercel.app/",
+        "https://client-intelligence-alpha.vercel.app/",
     ],
     allow_credentials=True,
     allow_methods=["*"],
