@@ -1,0 +1,178 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ClientIntelligenceReport",
+  "description": "Structured weekly client intelligence extracted from a client-coach conversation. Every 'finding' object MUST carry a classification, confidence score, evidence, and review_status — no exceptions.",
+  "type": "object",
+  "required": [
+    "meta",
+    "weekly_summary",
+    "domains",
+    "engagement",
+    "key_barriers",
+    "pending_actions",
+    "risk_flags",
+    "recommended_next_action"
+  ],
+  "definitions": {
+    "classification": {
+      "type": "string",
+      "enum": [
+        "confirmed_fact",
+        "client_reported",
+        "ai_inference",
+        "missing_information"
+      ],
+      "description": "confirmed_fact = numeric/objective data directly stated (e.g. '8000 steps'). client_reported = client's own subjective statement about how they feel/did, taken at face value (e.g. 'feeling happy'). ai_inference = a pattern/conclusion the AI drew by connecting multiple messages, NOT stated verbatim by anyone — reason field is mandatory. missing_information = data point the report template expects but the conversation never mentions."
+    },
+    "finding": {
+      "type": "object",
+      "required": ["value", "classification", "confidence", "evidence", "review_status"],
+      "properties": {
+        "value": {
+          "type": ["string", "number", "null"],
+          "description": "The extracted value. Null when classification is missing_information — use status:'missing_information' as the signal, not an empty string."
+        },
+        "classification": { "$ref": "#/definitions/classification" },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Model's self-rated confidence in this finding, independent of classification. classification says WHAT KIND of finding this is (fact vs client statement vs inference vs gap); confidence says HOW SURE the model is about the value it extracted. A strongly-supported ai_inference (multiple consistent data points) can carry high confidence — it must still be labeled ai_inference, never upgraded to confirmed_fact. missing_information should be 0."
+        },
+        "evidence": {
+          "type": "array",
+          "description": "Direct anchors into the source conversation. Empty array ONLY allowed when classification is missing_information. For ai_inference, list every day this pattern was drawn from (multiple entries expected).",
+          "items": {
+            "type": "object",
+            "required": ["day", "speaker", "quote"],
+            "properties": {
+              "day": { "type": "string", "description": "e.g. 'Day 7'" },
+              "timestamp": { "type": "string", "description": "Optional — only if the transcript carries timestamps, e.g. '08:34'." },
+              "speaker": { "type": "string", "enum": ["Client", "Coach", "Accountability Coach"] },
+              "quote": { "type": "string", "description": "Short verbatim excerpt (<=15 words) copied from the transcript. This is the ONLY field allowed to contain transcript text verbatim." }
+            }
+          }
+        },
+        "reason": { "type": "string", "description": "MANDATORY when classification is ai_inference — 1-line explanation of what pattern/logic produced this conclusion. Forbidden (omit) for confirmed_fact/client_reported since those need no inference chain." },
+        "review_status": {
+          "type": "string",
+          "enum": ["pending", "approved", "edited", "rejected"],
+          "default": "pending",
+          "description": "Human-in-the-loop state. Every finding starts 'pending' until a coach reviews it in the UI."
+        }
+      }
+    },
+    "day_metric": {
+      "type": "object",
+      "properties": {
+        "day": { "type": "string" },
+        "finding": { "$ref": "#/definitions/finding" }
+      }
+    }
+  },
+  "properties": {
+    "meta": {
+      "type": "object",
+      "properties": {
+        "client_id": { "type": "string", "description": "Anonymised identifier only." },
+        "period_covered": { "type": "string", "description": "e.g. 'Day 1 - Day 8'" },
+        "generated_at": { "type": "string", "format": "date-time" },
+        "review_status": {
+          "type": "string",
+          "enum": ["pending_review", "approved", "edited", "rejected"],
+          "default": "pending_review",
+          "description": "Report-level rollup status, separate from per-finding review_status."
+        }
+      }
+    },
+    "weekly_summary": {
+      "type": "object",
+      "description": "2-4 sentence human-readable overview.",
+      "properties": {
+        "text": { "type": "string" },
+        "classification": { "$ref": "#/definitions/classification" },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "review_status": { "type": "string", "enum": ["pending", "approved", "edited", "rejected"], "default": "pending" }
+      }
+    },
+    "domains": {
+      "type": "object",
+      "required": ["nutrition_adherence", "exercise_steps", "sleep", "water_intake", "symptoms_stress"],
+      "properties": {
+        "nutrition_adherence": {
+          "type": "object",
+          "properties": {
+            "overall_rating": { "$ref": "#/definitions/finding" },
+            "daily_log": { "type": "array", "items": { "$ref": "#/definitions/day_metric" } },
+            "gaps_identified": { "type": "array", "items": { "$ref": "#/definitions/finding" } }
+          }
+        },
+        "exercise_steps": {
+          "type": "object",
+          "properties": {
+            "daily_log": { "type": "array", "items": { "$ref": "#/definitions/day_metric" } },
+            "avg_steps": { "$ref": "#/definitions/finding" },
+            "exercise_types_mentioned": { "type": "array", "items": { "type": "string" } }
+          }
+        },
+        "sleep": {
+          "type": "object",
+          "properties": {
+            "daily_log": { "type": "array", "items": { "$ref": "#/definitions/day_metric" } },
+            "avg_hours": { "$ref": "#/definitions/finding" },
+            "trend": { "$ref": "#/definitions/finding" }
+          }
+        },
+        "water_intake": {
+          "type": "object",
+          "properties": {
+            "daily_log": { "type": "array", "items": { "$ref": "#/definitions/day_metric" } }
+          }
+        },
+        "symptoms_stress": {
+          "type": "object",
+          "properties": {
+            "symptoms_reported": { "type": "array", "items": { "$ref": "#/definitions/finding" } },
+            "stress_events": { "type": "array", "items": { "$ref": "#/definitions/finding" } }
+          }
+        }
+      }
+    },
+    "engagement": {
+      "type": "object",
+      "properties": {
+        "level": { "type": "string", "enum": ["high", "moderate", "low"] },
+        "finding": { "$ref": "#/definitions/finding" },
+        "missed_checkins": { "type": "array", "items": { "$ref": "#/definitions/finding" } }
+      }
+    },
+    "key_barriers": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/finding" }
+    },
+    "pending_actions": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/finding" }
+    },
+    "risk_flags": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "flag": { "type": "string" },
+          "severity": { "type": "string", "enum": ["low", "medium", "high"] },
+          "finding": { "$ref": "#/definitions/finding" }
+        }
+      }
+    },
+    "recommended_next_action": {
+      "type": "object",
+      "properties": {
+        "action": { "type": "string" },
+        "rationale": { "type": "string" },
+        "classification": { "$ref": "#/definitions/classification" },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    }
+  }
+}

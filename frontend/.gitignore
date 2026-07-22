@@ -1,0 +1,15 @@
+# Environment
+.env
+backend/.env
+
+# Python
+__pycache__/
+*.py[cod]
+
+# Virtual environment
+.venv/
+
+# Node
+node_modules/
+
+.python-version
