@@ -4,7 +4,7 @@ export async function analyzeTranscript(transcript) {
   let res;
 
   try {
-    res = await fetch(`${API_BASE}/api/analyze`, {
+    res = await fetch("/api/analyze", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
