@@ -16,7 +16,12 @@ app = FastAPI(
 # Dev-friendly CORS — tighten allow_origins before any real deployment.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000"],
+    allow_origins=[
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "https://client-intelligence-fnp38n0tg-anshu0901kumari-7232s-projects.vercel.app/",
+    ],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
